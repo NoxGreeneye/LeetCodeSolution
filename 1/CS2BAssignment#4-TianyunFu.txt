@@ -1,0 +1,848 @@
+//=============================================================================
+// Name        : MessageTracker.cpp
+// Author      : CS 2B
+// Date        : Summer 2018
+// Program purpose: keep track of customers’ SmartPhone message usages/charges
+// and to provide account disconnect service
+// Class Design: 1. Class SmartCarrier 2.abstract class Message 3. derived
+//               class Message 4. exception class
+// Revision History:
+// Date           Version     Change ID      Author          Comment
+// 10-08-18         1.3           4          Tiffany       main method & test
+// 09-08-18         1.2           3          Tiffany        Exception class
+// 08-08-18         1.1           2          Tiffany       class SmartCarrier
+// 07-08-18         1.0           1          Tiffany        class Message
+//=============================================================================
+
+#include <iostream>
+#include <iomanip>
+#include <map>
+#include <cstdlib>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <iterator>
+#include <vector>
+#include <exception>
+
+using namespace std;
+
+// -------- abstract class declaration --------------------------------
+class Message
+{
+protected:
+   string from_;
+   string to_;
+
+public:
+   Message();
+   Message(const string &from, const string &to);
+   virtual ~Message();
+   const string &get_from() const;
+   void set_from(const string &from);
+   const string &get_to() const;
+   void set_to(const string &to);
+   virtual double ComputeCharge() const = 0;
+   bool operator==(const Message &right) const;
+};
+
+// -------- derived class declaration --------------------------------
+class TextMessage : public Message
+{
+public:
+   //use default value for message_ parameter
+   TextMessage(const string &from, const string &to,
+               const string &message_ = "");
+   TextMessage();
+   virtual ~TextMessage();
+   virtual double ComputeCharge() const;
+   friend ostream &operator<<(ostream &, const TextMessage &);
+   const string &get_message() const;
+   void set_message(const string &message_);
+
+private:
+   string message_;
+};
+
+//----------------------------------------------------------
+class VoiceMessage : public Message
+{
+public:
+   VoiceMessage(const string &from, const string &to, int message_ = 0);
+   VoiceMessage();
+   virtual ~VoiceMessage();
+   virtual double ComputeCharge() const;
+   friend ostream &operator<<(ostream &, const VoiceMessage &);
+   int get_message() const;
+   void set_message(int message_);
+
+private:
+   int message_;
+};
+
+//----------------------------------------------------------
+class MediaMessage : public Message
+{
+public:
+   MediaMessage(const string &from, const string &to, double message_ = .0);
+   MediaMessage();
+   virtual ~MediaMessage();
+   virtual double ComputeCharge() const;
+   friend ostream &operator<<(ostream &, const MediaMessage &);
+   double get_message() const;
+   void set_message(double message_);
+
+private:
+   double message_;
+};
+
+// -------- class declaration --------------------------------
+class SmartCarrier
+{
+public:
+   SmartCarrier();
+   SmartCarrier(const string &carrier_);
+   virtual ~SmartCarrier();
+   const string &get_carrier_() const;
+   void set_carrier_(const string &carrier_);
+   const map<string, vector<Message *>> &get_accounts_map_() const;
+   void Init();
+   void StartService();
+
+private:
+   string carrier_;
+   map<string, vector<Message *>> accounts_map_;
+   void Menu();
+   int GetChoice();
+   void ListAll();
+   void SearchMessage();
+   void EraseMessage();
+   void DisconnectAccount();
+   void StopService();
+};
+
+// -------- Exception class ----------------------------------
+class MyException : public exception
+{
+private:
+   int error_code_;
+
+public:
+   MyException(int error_code_);
+   MyException();
+
+   virtual const char *what() const throw();
+   virtual ~MyException();
+};
+
+// -------- global function ----------------------------------
+ostream &operator<<(ostream &os, const MediaMessage &message)
+{
+   os << "Media message from " << message.from_ << " to " << message.to_ << ": "
+      << message.message_ << " MB" << endl;
+   return os;
+}
+
+ostream &operator<<(ostream &os, const VoiceMessage &message)
+{
+   os << "Voice message from " << message.from_ << " to " << message.to_ << ": "
+      << (message.message_ / 60) << " minutes " << (message.message_ % 60)
+      << " seconds" << endl;
+   return os;
+}
+
+ostream &operator<<(ostream &os, const TextMessage &message)
+{
+   os << "Text message from " << message.from_ << " to " << message.to_ << ": "
+      << message.message_ << endl;
+   return os;
+}
+
+// -------- main function ----------------------------------------------
+int main()
+{
+   SmartCarrier *p_carrier = NULL;
+   p_carrier = new SmartCarrier("FOOTHILL WIRELESS");
+   p_carrier->Init();
+   p_carrier->StartService();
+   delete p_carrier;
+}
+
+// -------- Message class definition ------------------------------------
+Message::Message() : from_("Unknown"), to_("Unknown") {}
+
+Message::Message(const string &from, const string &to) : from_(from), to_(to) {}
+
+Message::~Message()
+{
+   cout << "- Message destroyed\n";
+}
+
+double Message::ComputeCharge() const
+{
+   return 0.0;
+}
+
+bool Message::operator==(const Message &right) const
+{
+   return (this->from_ == right.from_ && this->to_ == right.to_);
+}
+
+const string &Message::get_from() const
+{
+   return from_;
+}
+
+void Message::set_from(const string &from)
+{
+   this->from_ = from;
+}
+
+const string &Message::get_to() const
+{
+   return to_;
+}
+
+void Message::set_to(const string &to)
+{
+   this->to_ = to;
+}
+
+// -------- Derived class definition ------------------------------------
+TextMessage::TextMessage() : Message(), message_("") {}
+
+TextMessage::TextMessage(const string &from, const string &to,
+                         const string &message_)
+      :
+      Message(from, to), message_(message_) {}
+
+TextMessage::~TextMessage()
+{
+   cout << "- Text Message from " << from_ << " destroyed\n";
+}
+
+double TextMessage::ComputeCharge() const
+{
+   return 20;
+}
+
+const string &TextMessage::get_message() const
+{
+   return message_;
+}
+
+void TextMessage::set_message(const string &message_)
+{
+   this->message_ = message_;
+}
+
+//----------------------------------------------------------
+VoiceMessage::VoiceMessage() : Message(), message_(0) {}
+
+VoiceMessage::VoiceMessage(const string &from, const string &to, int message_)
+      :
+      Message(from, to), message_(message_) {}
+
+VoiceMessage::~VoiceMessage()
+{
+   cout << "- Voice Message from " << from_ << " destroyed\n";
+}
+
+double VoiceMessage::ComputeCharge() const
+{
+   return 1.5 * message_;
+}
+
+int VoiceMessage::get_message() const
+{
+   return message_;
+}
+
+void VoiceMessage::set_message(int message_)
+{
+   this->message_ = message_;
+}
+
+//----------------------------------------------------------
+MediaMessage::MediaMessage() : Message(), message_(0.0) {}
+
+MediaMessage::MediaMessage(const string &from, const string &to,
+                           double message_)
+      :
+      Message(from, to), message_(message_) {}
+
+MediaMessage::~MediaMessage()
+{
+   cout << "- Media Message from " << from_ << " destroyed\n";
+}
+
+double MediaMessage::ComputeCharge() const
+{
+   return 10 * message_;
+}
+
+double MediaMessage::get_message() const
+{
+   return message_;
+}
+
+void MediaMessage::set_message(double message_)
+{
+   this->message_ = message_;
+}
+
+// -------- class SmartCarrier definition --------------------------------
+SmartCarrier::SmartCarrier() : carrier_("Unknown") {}
+
+SmartCarrier::SmartCarrier(const string &carrier_) : carrier_(carrier_) {}
+
+SmartCarrier::~SmartCarrier()
+{
+   vector<Message *>::iterator iter;
+   map<string, vector<Message *>>::iterator m_iter;
+
+   for (m_iter = accounts_map_.begin(); m_iter != accounts_map_.end(); ++m_iter)
+   {
+      for (iter = m_iter->second.begin(); iter != m_iter->second.end(); ++iter)
+      {
+         delete (*iter); 
+      }
+      m_iter->second.clear();
+   }
+   accounts_map_.clear();
+
+   cout << "- Smart Carrier Destroyed\n";
+}
+
+void SmartCarrier::Init()
+{
+   // 650-267-1289
+   Message *text_msg = new TextMessage("650-267-1289", "650-345-9001", "Hello");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   Message *voice_msg = new VoiceMessage("650-267-1289", "408-111-2222", 40);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   Message *media_msg = new MediaMessage("650-267-1289", "650-315-0008", 12);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 408-235-1500
+   text_msg =
+         new TextMessage("408-235-1500", "665-315-2576", "Call back please");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg =
+         new TextMessage("408-235-1500", "645-345-9223", "You can make it!");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg =
+         new TextMessage("408-235-1500", "645-345-9123", "Trust in yourself.");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   voice_msg = new VoiceMessage("408-235-1500", "650-315-2576", 140);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("408-235-1500", "650-315-2556", 10);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("408-235-1500", "650-315-2512", 105);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   media_msg = new MediaMessage("408-235-1500", "650-315-0009", 123.5);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("408-235-1500", "650-315-0010", 10.3);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("408-235-1500", "650-315-0011", 35);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("408-235-1500", "650-315-0012", 4.8);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 650-781-7900
+   text_msg =
+         new TextMessage("650-781-7900", "645-325-9123", "I love Foothill");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg = new TextMessage("650-781-7900", "650-325-9123", "Study is fun");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   media_msg = new MediaMessage("650-781-7900", "650-315-0013", 42.5);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("650-781-7900", "650-315-0015", 33.3);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("650-781-7900", "650-315-0018", 23.5);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 415-298-2162
+   voice_msg = new VoiceMessage("415-298-2162", "650-315-2222", 15);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   media_msg = new MediaMessage("415-298-2162", "650-315-0019", 10.98);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 408-720-0012
+   text_msg = new TextMessage("408-720-0012", "650-315-9123",
+                              "CS 2B is my favourite this summer");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   voice_msg = new VoiceMessage("408-720-0012", "650-315-0000", 59);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("408-720-0012", "650-315-0001", 555);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("408-720-0012", "650-315-0002", 100);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("408-720-0012", "650-315-0003", 50);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+
+   // 650-230-9912
+   media_msg = new MediaMessage("650-230-9912", "650-315-0022", 10.9);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("650-230-9912", "650-315-0023", 10);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("650-230-9912", "650-315-0033", 23);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 408-462-7890
+   text_msg = new TextMessage("408-462-7890", "650-315-5555", "Study hard");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg =
+         new TextMessage("408-462-7890", "650-315-5554", "Be professional");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg = new TextMessage("408-462-7890", "650-315-5558", "Play hard");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg = new TextMessage("408-462-7890", "650-315-2558",
+                              "You should learn how to swim.");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   voice_msg = new VoiceMessage("408-462-7890", "650-315-0004", 50);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("408-462-7890", "650-315-0005", 200);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   media_msg = new MediaMessage("408-462-7890", "650-315-0043", 28);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("408-462-7890", "650-315-0053", 22);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("408-462-7890", "650-315-0063", 2);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 415-902-9581
+   text_msg = new TextMessage("415-902-9581", "650-315-2578",
+                              "It's a good way to relax");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   voice_msg = new VoiceMessage("415-902-9581", "650-315-0006", 280);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   voice_msg = new VoiceMessage("415-902-9581", "650-315-0007", 120);
+   accounts_map_[voice_msg->get_from()].push_back(voice_msg);
+   media_msg = new MediaMessage("415-902-9581", "650-315-0073", 6.6);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+   media_msg = new MediaMessage("415-902-9581", "650-315-0083", 25);
+   accounts_map_[media_msg->get_from()].push_back(media_msg);
+
+   // 310-290-1666
+   text_msg = new TextMessage("310-290-1666", "650-315-2578",
+                              "Don't forget to thank your mom");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg = new TextMessage("310-290-1666", "665-315-2578",
+                              "Your parents are always there.");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+   text_msg = new TextMessage("310-290-1666", "665-315-2576", "Be grateful!");
+   accounts_map_[text_msg->get_from()].push_back(text_msg);
+
+   // 945-890-5913
+   accounts_map_["945-890-5913"].push_back(NULL);
+}
+
+void SmartCarrier::StartService()
+{
+   int choice;
+   do
+   {
+      Menu();
+      choice = GetChoice();
+      switch (choice)
+      {
+         case 1:
+            ListAll();
+            break;
+         case 2:
+            SearchMessage();
+            break;
+         case 3:
+            EraseMessage();
+            break;
+         case 4:
+            DisconnectAccount();
+            break;
+         case 5:
+            StopService();
+            break;
+         default:
+            cout << "\n*** ERROR - Invalid choice ***\n";
+      }
+   }
+   while (choice != 5);
+}
+
+void SmartCarrier::Menu()
+{
+   cout << "\n\t\t" << carrier_ << endl;
+   cout << "\tMESSAGE UTILIZATION AND ACCOUNT ADMIN\n\n";
+   cout << "1. List summary of message usages/charges for all accounts\n"
+        << "2. Search a message from an account\n"
+        << "3. Erase a message from an account\n"
+        << "4. Disconnect an account\n" << "5. Quit\n";
+}
+
+int SmartCarrier::GetChoice()
+{
+   int choice;
+   string user_input;
+   cout << "\nYour choice: ";
+   getline(cin, user_input);
+   istringstream(user_input) >> choice;
+
+   return choice;
+}
+
+void SmartCarrier::ListAll()
+{
+   double charge;
+   int count_total, count_text, count_voice, count_media;
+   vector<Message *>::iterator v_iter;
+   map<string, vector<Message *>>::iterator m_iter;
+
+   cout << left << setw(20) << "\nPhone number" << setw(16) << "Total messages"
+        << setw(8) << "Text" << setw(8) << "Voice" << setw(8) << "Media"
+        << setw(10) << "Total charges\n";
+
+   for (m_iter = accounts_map_.begin(); m_iter != accounts_map_.end(); ++m_iter)
+   {
+      charge = count_voice = count_text = count_media = count_total = 0;
+      cout << left << setw(17) << m_iter->first;
+
+      for (v_iter = m_iter->second.begin(); v_iter != m_iter->second.end();
+           ++v_iter)
+      {
+         // if v_iter is a null pointer, skip it
+         if (*v_iter == NULL)
+            continue;
+
+         charge += (*v_iter)->ComputeCharge();
+         count_total++;
+
+         if ((dynamic_cast <TextMessage *> (*v_iter)) != NULL)
+         {
+            count_text++;
+         }
+         else if ((dynamic_cast <VoiceMessage *> (*v_iter)) != NULL)
+         {
+            count_voice++;
+         }
+         else if ((dynamic_cast <MediaMessage *> (*v_iter)) != NULL)
+         {
+            count_media++;
+         }
+      }
+
+      cout << right << setw(13) << count_total << setw(8) << count_text
+           << setw(8) << count_voice << setw(8) << count_media << fixed
+           << setprecision(2) << setw(8) << "$" << charge / 100 << endl;
+   }
+   cout << endl;
+}
+
+void SmartCarrier::SearchMessage()
+{
+   int type;
+   bool found = false;
+   string account, to, user_input;
+   TextMessage *p_text = NULL;
+   VoiceMessage *p_voice = NULL;
+   MediaMessage *p_media = NULL;
+   vector<Message *>::iterator v_iter;
+   map<string, vector<Message *>>::iterator m_iter;
+
+   try
+   {
+      cout << "Enter an account: ";
+      getline(cin, account);
+
+      //find the account
+      m_iter = accounts_map_.find(account);
+
+      if (m_iter == accounts_map_.end())
+         throw MyException(1);
+
+      cout << "Enter type (1.Test 2.Voice 3.Media): ";
+      getline(cin, user_input);
+      istringstream(user_input) >> type;
+
+      cout << "Enter the number to: ";
+      getline(cin, to);
+      cout << endl;
+
+      switch (type)
+      {
+         case 1:
+         {
+            TextMessage key_msg(account, to);
+
+            for (v_iter = m_iter->second.begin();
+                 v_iter != m_iter->second.end(); ++v_iter)
+            {
+               if ((p_text = dynamic_cast <TextMessage *> (*v_iter)) != NULL
+                   && *p_text == key_msg)
+               {
+                  found = true;
+                  cout << "Message found:\n" << *p_text << endl;
+               }
+            }
+
+            if (!found)
+               throw MyException(3);
+            break;
+         }
+         case 2:
+         {
+            VoiceMessage key_msg(account, to);
+            for (v_iter = m_iter->second.begin();
+                 v_iter != m_iter->second.end(); ++v_iter)
+            {
+               if ((p_voice = dynamic_cast <VoiceMessage *> (*v_iter)) != NULL
+                   && *p_voice == key_msg)
+               {
+                  found = true;
+                  cout << "Message found:\n" << *p_voice << endl;
+               }
+            }
+
+            if (!found)
+               throw MyException(3);
+            break;
+         }
+         case 3:
+         {
+            MediaMessage key_meida(account, to);
+            for (v_iter = m_iter->second.begin();
+                 v_iter != m_iter->second.end(); ++v_iter)
+            {
+               if ((p_media = dynamic_cast <MediaMessage *> (*v_iter)) != NULL
+                   && *p_media == key_meida)
+               {
+                  found = true;
+                  cout << "Message found:\n" << *p_media << endl;
+               }
+            }
+
+            if (!found)
+               throw MyException(3);
+            break;
+         }
+         default:
+            throw MyException(2);
+      }
+   }
+   catch (exception &e)
+   {
+      cout << e.what() << '\n';
+      return;
+   }
+}
+
+void SmartCarrier::EraseMessage()
+{
+   int type;
+   bool found = false;
+   string account, from, to, user_input;
+   vector<Message *>::iterator v_iter;
+   map<string, vector<Message *>>::iterator m_iter;
+
+   try
+   {
+      cout << "Enter an account: ";
+      getline(cin, account);
+
+      m_iter = accounts_map_.find(account);
+      if (m_iter == accounts_map_.end())
+         throw MyException(1);
+
+      cout << "Enter type (1.Test 2.Voice 3.Media): ";
+      getline(cin, user_input);
+      istringstream(user_input) >> type;
+
+      cout << "Enter to: ";
+      getline(cin, to);
+
+      switch (type)
+      {
+         case 1:
+         {
+            TextMessage key_msg(account, to);
+            for (v_iter = m_iter->second.begin();
+                 v_iter != m_iter->second.end(); ++v_iter)
+            {
+               if ((dynamic_cast <TextMessage *> (*v_iter)) != NULL
+                   && *(*v_iter) == key_msg)
+               {
+                  found = true;
+                  Message *p_delete = *v_iter;
+                  m_iter->second.erase(v_iter);
+                  delete p_delete;
+                  break;
+               }
+            }
+
+            if (!found)
+               throw MyException(3);
+            break;
+         }
+         case 2:
+         {
+            VoiceMessage key_msg(account, to);
+            for (v_iter = m_iter->second.begin();
+                 v_iter != m_iter->second.end(); ++v_iter)
+            {
+               if ((dynamic_cast <VoiceMessage *> (*v_iter)) != NULL
+                   && *(*v_iter) == key_msg)
+               {
+                  found = true;
+                  Message *p_delete = *v_iter;
+                  m_iter->second.erase(v_iter);
+                  delete p_delete;
+                  break;
+               }
+            }
+
+            if (!found)
+               throw MyException(3);
+            break;
+         }
+         case 3:
+         {
+            MediaMessage key_msg(account, to);
+            for (v_iter = m_iter->second.begin();
+                 v_iter != m_iter->second.end(); ++v_iter)
+            {
+               if ((dynamic_cast <MediaMessage *> (*v_iter)) != NULL
+                   && *(*v_iter) == key_msg)
+               {
+                  found = true;
+                  Message *p_delete = *v_iter;
+                  m_iter->second.erase(v_iter);
+                  delete p_delete;
+                  break;
+               }
+            }
+
+            if (!found)
+               throw MyException(3);
+            break;
+         }
+         default:
+            throw MyException(2);
+      }
+   }
+   catch (exception &e)
+   {
+      cout << e.what() << '\n';
+      return;
+   }
+}
+
+void SmartCarrier::DisconnectAccount()
+{
+   string account;
+   vector<Message *>::iterator v_iter;
+   map<string, vector<Message *>>::iterator m_iter;
+
+   try
+   {
+      cout << "Enter an account: ";
+      getline(cin, account);
+
+      m_iter = accounts_map_.find(account);
+      if (m_iter == accounts_map_.end())
+         throw MyException(1);
+
+      for (v_iter = m_iter->second.begin(); v_iter != m_iter->second.end();
+           ++v_iter)
+      {
+         delete (*v_iter);
+      }
+      m_iter->second.clear();
+      accounts_map_.erase(m_iter);
+   }
+   catch (exception &e)
+   {
+      cout << e.what() << '\n';
+      return;
+   }
+}
+
+void SmartCarrier::StopService()
+{
+   vector<Message *>::iterator v_iter;
+   map<string, vector<Message *>>::iterator m_iter;
+   TextMessage *p_text = NULL;
+   VoiceMessage *p_voice = NULL;
+   MediaMessage *p_media = NULL;
+
+   ListAll();
+
+   ofstream fout("MessageHistory.txt");
+   if (!fout)
+   {
+      cout << "\n*** ERROR: Failed to open output file ***\n";
+      return;
+   }
+
+   for (m_iter = accounts_map_.begin(); m_iter != accounts_map_.end(); ++m_iter)
+   {
+      for (v_iter = m_iter->second.begin(); v_iter != m_iter->second.end();
+           ++v_iter)
+      {
+         if ((p_text = dynamic_cast <TextMessage *> (*v_iter)) != NULL)
+         {
+            fout << p_text->get_from() << ";" << p_text->get_to() << ";"
+                 << "TEXT" << ";" << p_text->get_message() << endl;
+         }
+         else if ((p_voice = dynamic_cast <VoiceMessage *> (*v_iter)) != NULL)
+         {
+            fout << p_voice->get_from() << ";" << p_voice->get_to() << ";"
+                 << "VOICE" << ";" << p_voice->get_message() << endl;
+         }
+         else if ((p_media = dynamic_cast <MediaMessage *> (*v_iter)) != NULL)
+         {
+            fout << p_media->get_from() << ";" << p_media->get_to() << ";"
+                 << "MEDIA" << ";" << p_media->get_message() << endl;
+         }
+      }
+   }
+
+   fout.close();
+   cout << "================================================\n";
+   cout << "\tThanks for choosing " << carrier_ << "\n\tSEE YOU AGAIN!\n\n";
+   return;
+}
+
+const string &SmartCarrier::get_carrier_() const
+{
+   return carrier_;
+}
+
+void SmartCarrier::set_carrier_(const string &carrier_)
+{
+   this->carrier_ = carrier_;
+}
+
+const map<string, vector<Message *>> &SmartCarrier::get_accounts_map_() const
+{
+   return accounts_map_;
+}
+
+// ---------- Exception class definition ----------------------------
+MyException::MyException(int error_code_) : error_code_(error_code_) {}
+
+MyException::MyException() {}
+
+MyException::~MyException() {}
+
+const char * MyException::what() const throw()
+{
+   if (error_code_ == 1)
+      return "\n*** ERROR - account NOT found ***\n";
+   else if (error_code_ == 2)
+      return "*** ERROR - Invalid Type ***\n";
+   else if (error_code_ == 3)
+      return "\n*** ERROR - message NOT found ***\n";
+   else
+      return "*** Unknown exception happened ***\n";
+}
+
+// ------------------------- END ----------------------------
